@@ -2,24 +2,13 @@ import pandas as pd
 import os
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import classification_report, accuracy_score
+from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
 
-# Import the candidate models
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.neighbors import KNeighborsClassifier
 
-# 1) CONFIGURATION
-# Point this to the folder containing the 3 sound type folders
-# Structure expected:
-#   dataset/
-#       Horn/
-#           iPhone13/ (files...)
-#           Pixel6/   (files...)
-#       Wipers/
-#           iPhone13/ (files...)
-#           ...
 
 # dataset_root_path = "./data/recodings_affected_by_noise/live_recordings"
 dataset_root_path = os.path.join(os.path.dirname(__file__), os.pardir, "data/recodings_affected_by_noise/live_recordings")
@@ -30,52 +19,46 @@ labels = []
 print("Scanning folder structure...")
 
 # 2) CRAWL FOLDERS RECURSIVELY
-# os.walk will go: Root -> Horn -> iPhone13 -> (Files)
 for root, dirs, files in os.walk(dataset_root_path):
-    # Skip folders that have no files (like the "Horn" container folder itself)
+    # Skip folders that don't have files
     if not files:
         continue
     
-    # The label is the name of the immediate folder containing the files
-    # e.g., if path is ".../Horn/iPhone13", basename is "iPhone13"
+    # The label is the name of the immediate folder containing the files (e.g. S6 - scenario C or A - scenario B)
     current_phone_label = os.path.basename(root)
     
-    # Optional: Print what we are currently processing to track progress
-    # We can also capture the sound type from the parent folder if needed for debugging
+    # Print data loading and processing progress
     parent_folder = os.path.basename(os.path.dirname(root))
     print(f"Processing: {parent_folder} -> {current_phone_label} ({len(files)} files)")
     
     for filename in files:
         file_path = os.path.join(root, filename)
-        
-        # # simple check to ensure we only read data files
-        # if not (filename.endswith('.csv') or filename.endswith('.txt')):
-        #     continue
 
         try:
-            # 3) LOAD AND TRANSPOSE
             # Read the file (assuming no header, 4096 lines)
             single_file_df = pd.read_csv(file_path, sep=',', header=None)
-            
-            # Validation check
-            # if single_file_df.shape[0] != 4096:
-            #     continue
 
-            # Flatten 4096 vertical lines into 1 horizontal row
-            flat_data = single_file_df.values.flatten()
+                # Flatten 4096 vertical lines into 1 horizontal row
+                # flat_data = single_file_df.values.flatten()
+
+            # IMPORTANT CHANGE:
+            # We select all rows (:), but ONLY the second column (1)
+            # The first column (0) is Frequency, which we discard.
+            amplitudes = single_file_df.iloc[:, 1].values
             
-            data_rows.append(flat_data)
+            # Add amplitudes and label to the lists
+            data_rows.append(amplitudes)
             labels.append(current_phone_label)
             
         except Exception as e:
             print(f"Error reading {filename}: {e}")
 
-# 4) CREATE MASTER DATASET
+# Create main dataset
 print("\nCompiling dataset...")
 X = pd.DataFrame(data_rows)
 y = pd.Series(labels)
 
-print(f"Final Dataset Shape: {X.shape} (Rows/Examples, Columns/Frequencies)")
+print(f"Final Dataset Shape: {X.shape} (Measurments, Frequencies)")
 print(f"Classes found: {y.unique()} | Number of distinct classes: {len(y.unique())}")
 
 # 5) SPLIT DATA
@@ -118,8 +101,19 @@ for name, model in models.items():
     
     # Score
     acc = accuracy_score(y_test, y_pred)
+    clasif_report = classification_report(y_test, y_pred)
+    conf_matrix = confusion_matrix(y_test, y_pred)
+
+    # Get the list of class names (e.g., ['iPhone13', 'Pixel6', ...])
+    class_labels = model.classes_ 
+    # Create a DataFrame
+    cm_df = pd.DataFrame(conf_matrix, index=class_labels, columns=class_labels)
     
-    print(f"--> {name} Accuracy: {acc:.4f}")
+    print(f"--> {name} Accuracy: {acc:.4f}\n")
+    print(f"--> {name} Classification Report:\n{clasif_report}")
+    print(f"--> {name} Confusion Matrix:")
+    print(cm_df)
+    print()
     results.append({'Model': name, 'Accuracy': acc})
 
 # --- 5) SUMMARY TABLE ---

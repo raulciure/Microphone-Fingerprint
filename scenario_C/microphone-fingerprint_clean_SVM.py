@@ -42,24 +42,21 @@ for root, dirs, files in os.walk(dataset_root_path):
     
     for filename in files:
         file_path = os.path.join(root, filename)
-        
-        # # simple check to ensure we only read data files
-        # if not (filename.endswith('.csv') or filename.endswith('.txt')):
-        #     continue
 
         try:
             # 3) LOAD AND TRANSPOSE
             # Read the file (assuming no header, 4096 lines)
             single_file_df = pd.read_csv(file_path, sep=',', header=None)
-            
-            # Validation check
-            # if single_file_df.shape[0] != 4096:
-            #     continue
 
-            # Flatten 4096 vertical lines into 1 horizontal row
-            flat_data = single_file_df.values.flatten()
+                # Flatten 4096 vertical lines into 1 horizontal row
+                # flat_data = single_file_df.values.flatten()
+
+            # IMPORTANT CHANGE:
+            # We select all rows (:), but ONLY the second column (1)
+            # The first column (0) is Frequency, which we discard.
+            amplitudes = single_file_df.iloc[:, 1].values
             
-            data_rows.append(flat_data)
+            data_rows.append(amplitudes)
             labels.append(current_phone_label)
             
         except Exception as e:

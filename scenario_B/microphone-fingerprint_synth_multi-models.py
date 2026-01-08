@@ -10,8 +10,8 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.neighbors import KNeighborsClassifier
 
 
-# dataset_root_path = "./data/clean_recordings/live_recordings"
-dataset_root_path = os.path.join(os.path.dirname(__file__), os.pardir, "data/clean_recordings/live_recordings")
+# dataset_root_path = ".data/clean_recordings/synthetically_reproduced_environmental_sound"
+dataset_root_path = os.path.join(os.path.dirname(__file__), os.pardir, "data/clean_recordings/synthetically_reproduced_environmental_sound")
 
 data_rows = []
 labels = []
@@ -25,11 +25,11 @@ for root, dirs, files in os.walk(dataset_root_path):
         continue
     
     # The label is the name of the immediate folder containing the files (e.g. S6 - scenario C or A - scenario B)
-    current_phone_label = os.path.basename(root)
+    current_mic_label = os.path.basename(root)
     
     # Print data loading and processing progress
     parent_folder = os.path.basename(os.path.dirname(root))
-    print(f"Processing: {parent_folder} -> {current_phone_label} ({len(files)} files)")
+    print(f"Processing: {parent_folder} -> {current_mic_label} ({len(files)} files)")
     
     for filename in files:
         file_path = os.path.join(root, filename)
@@ -38,13 +38,17 @@ for root, dirs, files in os.walk(dataset_root_path):
             # Read the file (assuming no header, 4096 lines)
             single_file_df = pd.read_csv(file_path, sep=',', header=None)
 
+                # Flatten 4096 vertical lines into 1 horizontal row
+                # flat_data = single_file_df.values.flatten()
+
+            # IMPORTANT CHANGE:
             # We select all rows (:), but ONLY the second column (1)
             # The first column (0) is Frequency, which we discard.
             amplitudes = single_file_df.iloc[:, 1].values
             
             # Add amplitudes and label to the lists
             data_rows.append(amplitudes)
-            labels.append(current_phone_label)
+            labels.append(current_mic_label)
             
         except Exception as e:
             print(f"Error reading {filename}: {e}")
@@ -57,24 +61,29 @@ y = pd.Series(labels)
 print(f"Final Dataset Shape: {X.shape} (Measurments, Frequencies)")
 print(f"Classes found: {y.unique()} | Number of distinct classes: {len(y.unique())}")
 
-# Split data
+# 5) SPLIT DATA
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
-# Apply standard scaling preprocessing (required for SVM, neutral for others)
+# 6) PREPROCESSING
+# Standard Scaling is CRUCIAL for SVM to work correctly
 scaler = StandardScaler()
 print("Scaling data...")
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
-# Create dictionary for models
+# --- 3) DEFINE MODELS ---
+# We store them in a dictionary to loop through them easily
 models = {
     "SVM (Linear)": SVC(kernel='linear', C=1.0),
+    
     "Random Forest": RandomForestClassifier(n_estimators=100, random_state=42),
+    
     "Neural Net (MLP)": MLPClassifier(hidden_layer_sizes=(100,), max_iter=1000, random_state=42),
+    
     "K-Nearest Neighbors": KNeighborsClassifier(n_neighbors=5)
 }
 
-# Compare models
+# --- 4) THE TOURNAMENT LOOP ---
 print("\n--- STARTING MODEL COMPARISON ---\n")
 
 results = []
@@ -107,7 +116,7 @@ for name, model in models.items():
     print()
     results.append({'Model': name, 'Accuracy': acc})
 
-# Final results
+# --- 5) SUMMARY TABLE ---
 print("\n--- FINAL RESULTS ---")
 results_df = pd.DataFrame(results).sort_values(by='Accuracy', ascending=False)
 print(results_df)
