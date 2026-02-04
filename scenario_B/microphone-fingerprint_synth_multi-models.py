@@ -2,12 +2,16 @@ import pandas as pd
 import os
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
+from sklearn.metrics import classification_report, accuracy_score, confusion_matrix, roc_auc_score, log_loss
 
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.neighbors import KNeighborsClassifier
+
+# For nice graphical plots
+import matplotlib.pyplot as plt
+from sklearn.metrics import ConfusionMatrixDisplay, RocCurveDisplay, PrecisionRecallDisplay
 
 
 # dataset_root_path = ".data/clean_recordings/synthetically_reproduced_environmental_sound"
@@ -74,7 +78,7 @@ X_test_scaled = scaler.transform(X_test)
 # --- 3) DEFINE MODELS ---
 # We store them in a dictionary to loop through them easily
 models = {
-    "SVM (Linear)": SVC(kernel='linear', C=1.0),
+    "SVM (Linear)": SVC(kernel='linear', C=1.0, probability=True),
     
     "Random Forest": RandomForestClassifier(n_estimators=100, random_state=42),
     
@@ -89,30 +93,100 @@ print("\n--- STARTING MODEL COMPARISON ---\n")
 results = []
 
 # Train each model
+model: SVC | RandomForestClassifier | MLPClassifier | KNeighborsClassifier
 for name, model in models.items():
     print(f"Training {name}...")
-    
+
     # KNN and Neural Nets strictly need scaled data. 
     # Random Forest technically doesn't, but it doesn't hurt.
     model.fit(X_train_scaled, y_train)
     
     # Predict
     y_pred = model.predict(X_test_scaled)
+
+    # Probability prediction
+    y_probs = model.predict_proba(X_test_scaled)
     
     # Score
     acc = accuracy_score(y_test, y_pred)
     clasif_report = classification_report(y_test, y_pred)
     conf_matrix = confusion_matrix(y_test, y_pred)
+        # roc = roc_curve(y_test, y_pred)
+    roc_auc = roc_auc_score(y_test, y_probs, multi_class='ovr')
+        # prec_rec_curve = precision_recall_curve(y_test, y_probs)
+    lg_ls = log_loss(y_test, y_probs)
 
     # Get the list of class names (e.g., ['iPhone13', 'Pixel6', ...])
     class_labels = model.classes_ 
     # Create a DataFrame
     cm_df = pd.DataFrame(conf_matrix, index=class_labels, columns=class_labels)
+        # roc_df = pd.DataFrame(roc, index=class_labels, columns=class_labels)
+        # prec_rec_curve_df = pd.DataFrame(prec_rec_curve, index=class_labels, columns=class_labels)
     
     print(f"--> {name} Accuracy: {acc:.4f}\n")
     print(f"--> {name} Classification Report:\n{clasif_report}")
     print(f"--> {name} Confusion Matrix:")
-    print(cm_df)
+    print(cm_df + "\n")
+
+                # # Confusion Matrix
+                #     # skplt.metrics.plot_confusion_matrix(y_test, y_pred, normalize=True, title="Confusion Matrix")
+                #     # plt.show()
+                # conf_matrix = yelbrk.classifier.ConfusionMatrix(model, classes=model.classes_)
+                # conf_matrix.score(X_test_scaled, y_test)
+                # conf_matrix.show()
+
+                # print(f"--> {name} ROC Curves:")
+                # # ROC Curves
+                #     # skplt.metrics.plot_roc(y_test, y_probs, title="ROC Curves per phone")
+                #     # plt.show()
+                # roc_curve = yelbrk.classifier.ROCAUC(model, classes=model.classes_)
+                # roc_curve.score(X_test_scaled, y_test)
+                # roc_curve.show()
+
+                # print(f"--> {name} Precision-Recall Curve:")
+                # # Precision-Recall curve
+                #     # skplt.metrics.plot_precision_recall(y_test, y_probs, title="Precision-Recall Curve")
+                #     # plt.show()
+                # pr_curve = yelbrk.classifier.PrecisionRecallCurve(model, classes=model.classes_)
+                # pr_curve.score(X_test_scaled, y_test)
+                # pr_curve.show()
+
+    disp = ConfusionMatrixDisplay.from_estimator(
+        model,
+        X_test_scaled,
+        y_test,
+        cmap=plt.colormaps.get_cmap("Blues"),
+        normalize='true'
+    )
+    disp.ax_.set_title(f"{name} - confusion matrix:")
+    plt.show()
+
+                    # disp = RocCurveDisplay.from_estimator(
+                    #     model,
+                    #     X_test_scaled,
+                    #     y_test
+                    # )
+                    # disp.ax_.set_title(f"{name} - ROC curve:")
+                    # plt.show()
+
+                    # disp = PrecisionRecallDisplay.from_estimator(
+                    #     model,
+                    #     X_test_scaled,
+                    #     y_test
+                    # )
+                    # disp.ax_.set_title(f"{name} - Precision-Recall curve:")
+                    # plt.show()
+
+        # print(f"--> {name} ROC Curve:")
+        # print(roc_df)
+
+    print(f"--> {name} ROC AUC Score: {roc_auc:.4f}\n")
+
+        # print(f"--> {name} Precission-Recall Curve:")
+        # print(prec_rec_curve_df)
+
+    print(f"--> {name} Log Loss: {lg_ls:.4f}\n")
+
     print()
     results.append({'Model': name, 'Accuracy': acc})
 
