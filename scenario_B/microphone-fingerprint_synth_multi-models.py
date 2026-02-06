@@ -11,7 +11,7 @@ from sklearn.neighbors import KNeighborsClassifier
 
 # For nice graphical plots
 import matplotlib.pyplot as plt
-from sklearn.metrics import ConfusionMatrixDisplay, RocCurveDisplay, PrecisionRecallDisplay
+from sklearn.metrics import ConfusionMatrixDisplay
 
 
 # dataset_root_path = ".data/clean_recordings/synthetically_reproduced_environmental_sound"
@@ -22,7 +22,7 @@ labels = []
 
 print("Scanning folder structure...")
 
-# 2) CRAWL FOLDERS RECURSIVELY
+# Load data from folders
 for root, dirs, files in os.walk(dataset_root_path):
     # Skip folders that don't have files
     if not files:
@@ -42,12 +42,9 @@ for root, dirs, files in os.walk(dataset_root_path):
             # Read the file (assuming no header, 4096 lines)
             single_file_df = pd.read_csv(file_path, sep=',', header=None)
 
-                # Flatten 4096 vertical lines into 1 horizontal row
-                # flat_data = single_file_df.values.flatten()
-
             # IMPORTANT CHANGE:
-            # We select all rows (:), but ONLY the second column (1)
-            # The first column (0) is Frequency, which we discard.
+            # Select all rows (:), but ONLY the second column (1)
+            # The first column (0) is Frequency, which is discarded.
             amplitudes = single_file_df.iloc[:, 1].values
             
             # Add amplitudes and label to the lists
@@ -65,18 +62,16 @@ y = pd.Series(labels)
 print(f"Final Dataset Shape: {X.shape} (Measurments, Frequencies)")
 print(f"Classes found: {y.unique()} | Number of distinct classes: {len(y.unique())}")
 
-# 5) SPLIT DATA
+# Split data
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
-# 6) PREPROCESSING
-# Standard Scaling is CRUCIAL for SVM to work correctly
+# Apply standard scaling preprocessing (required for SVM, neutral for others)
 scaler = StandardScaler()
 print("Scaling data...")
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 
-# --- 3) DEFINE MODELS ---
-# We store them in a dictionary to loop through them easily
+# Create dictionary for models
 models = {
     "SVM (Linear)": SVC(kernel='linear', C=1.0, probability=True),
     
@@ -87,7 +82,7 @@ models = {
     "K-Nearest Neighbors": KNeighborsClassifier(n_neighbors=5)
 }
 
-# --- 4) THE TOURNAMENT LOOP ---
+# Compare models
 print("\n--- STARTING MODEL COMPARISON ---\n")
 
 results = []
@@ -111,86 +106,37 @@ for name, model in models.items():
     acc = accuracy_score(y_test, y_pred)
     clasif_report = classification_report(y_test, y_pred)
     conf_matrix = confusion_matrix(y_test, y_pred)
-        # roc = roc_curve(y_test, y_pred)
     roc_auc = roc_auc_score(y_test, y_probs, multi_class='ovr')
-        # prec_rec_curve = precision_recall_curve(y_test, y_probs)
     lg_ls = log_loss(y_test, y_probs)
 
     # Get the list of class names (e.g., ['iPhone13', 'Pixel6', ...])
     class_labels = model.classes_ 
     # Create a DataFrame
     cm_df = pd.DataFrame(conf_matrix, index=class_labels, columns=class_labels)
-        # roc_df = pd.DataFrame(roc, index=class_labels, columns=class_labels)
-        # prec_rec_curve_df = pd.DataFrame(prec_rec_curve, index=class_labels, columns=class_labels)
     
     print(f"--> {name} Accuracy: {acc:.4f}\n")
     print(f"--> {name} Classification Report:\n{clasif_report}")
+    print(f"--> {name} ROC AUC Score: {roc_auc:.4f}\n")
+    print(f"--> {name} Log Loss: {lg_ls:.4f}\n")
     print(f"--> {name} Confusion Matrix:")
-    print(cm_df + "\n")
-
-                # # Confusion Matrix
-                #     # skplt.metrics.plot_confusion_matrix(y_test, y_pred, normalize=True, title="Confusion Matrix")
-                #     # plt.show()
-                # conf_matrix = yelbrk.classifier.ConfusionMatrix(model, classes=model.classes_)
-                # conf_matrix.score(X_test_scaled, y_test)
-                # conf_matrix.show()
-
-                # print(f"--> {name} ROC Curves:")
-                # # ROC Curves
-                #     # skplt.metrics.plot_roc(y_test, y_probs, title="ROC Curves per phone")
-                #     # plt.show()
-                # roc_curve = yelbrk.classifier.ROCAUC(model, classes=model.classes_)
-                # roc_curve.score(X_test_scaled, y_test)
-                # roc_curve.show()
-
-                # print(f"--> {name} Precision-Recall Curve:")
-                # # Precision-Recall curve
-                #     # skplt.metrics.plot_precision_recall(y_test, y_probs, title="Precision-Recall Curve")
-                #     # plt.show()
-                # pr_curve = yelbrk.classifier.PrecisionRecallCurve(model, classes=model.classes_)
-                # pr_curve.score(X_test_scaled, y_test)
-                # pr_curve.show()
+    print(cm_df, "\n")
 
     disp = ConfusionMatrixDisplay.from_estimator(
         model,
         X_test_scaled,
         y_test,
         cmap=plt.colormaps.get_cmap("Blues"),
-        normalize='true'
+        normalize='true',
+        values_format='.2f',
+        xticks_rotation='vertical'
     )
     disp.ax_.set_title(f"{name} - confusion matrix:")
     plt.show()
 
-                    # disp = RocCurveDisplay.from_estimator(
-                    #     model,
-                    #     X_test_scaled,
-                    #     y_test
-                    # )
-                    # disp.ax_.set_title(f"{name} - ROC curve:")
-                    # plt.show()
-
-                    # disp = PrecisionRecallDisplay.from_estimator(
-                    #     model,
-                    #     X_test_scaled,
-                    #     y_test
-                    # )
-                    # disp.ax_.set_title(f"{name} - Precision-Recall curve:")
-                    # plt.show()
-
-        # print(f"--> {name} ROC Curve:")
-        # print(roc_df)
-
-    print(f"--> {name} ROC AUC Score: {roc_auc:.4f}\n")
-
-        # print(f"--> {name} Precission-Recall Curve:")
-        # print(prec_rec_curve_df)
-
-    print(f"--> {name} Log Loss: {lg_ls:.4f}\n")
-
     print()
     results.append({'Model': name, 'Accuracy': acc})
 
-# --- 5) SUMMARY TABLE ---
+# Final results
 print("\n--- FINAL RESULTS ---")
 results_df = pd.DataFrame(results).sort_values(by='Accuracy', ascending=False)
 print(results_df)
