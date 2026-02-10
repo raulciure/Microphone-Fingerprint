@@ -73,7 +73,7 @@ X_test_scaled = scaler.transform(X_test)
 
 # Create dictionary for models
 models = {
-    "SVM (Linear)": SVC(kernel='linear', C=1.0, probability=True),
+    "SVM (Linear)": SVC(kernel='linear', C=1.0, probability=True, random_state=42),
     
     "Random Forest": RandomForestClassifier(n_estimators=100, random_state=42),
     
