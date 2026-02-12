@@ -28,7 +28,7 @@ for root, dirs, files in os.walk(dataset_root_path):
     if not files:
         continue
     
-    # The label is the name of the immediate folder containing the files (e.g. S6 - scenario C or A - scenario B)
+    # The label is the name of the immediate folder containing the files
     current_mic_label = os.path.basename(root)
     
     # Print data loading and processing progress
@@ -39,12 +39,12 @@ for root, dirs, files in os.walk(dataset_root_path):
         file_path = os.path.join(root, filename)
 
         try:
-            # Read the file (assuming no header, 4096 lines)
+            # Read the file
             single_file_df = pd.read_csv(file_path, sep=',', header=None)
 
             # IMPORTANT CHANGE:
-            # Select all rows (:), but ONLY the second column (1)
-            # The first column (0) is Frequency, which is discarded.
+            # Select all rows (:), but ONLY the second column
+            # The first column is Frequency, which is discarded.
             amplitudes = single_file_df.iloc[:, 1].values
             
             # Add amplitudes and label to the lists
@@ -92,8 +92,7 @@ model: SVC | RandomForestClassifier | MLPClassifier | KNeighborsClassifier
 for name, model in models.items():
     print(f"Training {name}...")
 
-    # KNN and Neural Nets strictly need scaled data. 
-    # Random Forest technically doesn't, but it doesn't hurt.
+    # Train model
     model.fit(X_train_scaled, y_train)
     
     # Predict
@@ -109,7 +108,7 @@ for name, model in models.items():
     roc_auc = roc_auc_score(y_test, y_probs, multi_class='ovr')
     lg_ls = log_loss(y_test, y_probs)
 
-    # Get the list of class names (e.g., ['iPhone13', 'Pixel6', ...])
+    # Get the list of class names
     class_labels = model.classes_ 
     # Create a DataFrame
     cm_df = pd.DataFrame(conf_matrix, index=class_labels, columns=class_labels)
