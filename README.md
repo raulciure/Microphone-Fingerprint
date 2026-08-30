@@ -1,7 +1,10 @@
 # Notes
-Scenario B: Fingerprinting identical smartphones on environmental sound using prerecorded sounds. Data used: "./data/clean_recordings/live_recordings"; "./data/recodings_affected_by_noise/live_recordings"
 
-Scenario C: Fingerprinting smartphones from distinct manufacturers and models based on live recordings. Data used: "./data/clean_recordings/synthetically_reproduced_environmental_sound"
+Scenario A: Fingerprinting identical smartphones on environmental sound using prerecorded sounds. Data used: "./data/clean\_recordings/live\_recordings"; "./data/recodings\_affected\_by\_noise/live\_recordings"
 
-## Dataset source ##
+Scenario B: Fingerprinting smartphones from distinct manufacturers and models based on live recordings (both clean and noisy). Data used: "./data/clean\_recordings/synthetically\_reproduced\_environmental\_sound"
+
+## Dataset source
+
 The dataset used can be found here: https://github.com/ABerdich/Microphone-Fingerprint/tree/main
+
